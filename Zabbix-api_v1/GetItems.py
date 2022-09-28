@@ -126,7 +126,6 @@ class Zabbix(object):
             NewAllHost = {}
             # 循环向每个主机发起请求，获取监控项的值
             #print (AllHost)
-            #{'10719': {'host': 'dna-dataflow-prod-etl01.ubisoft.org', 'hostid': '10719', 'ip': '10.136.155.56', 'name': 'dna-dataflow-prod-etl01.ubisoft.org'}
             for k in AllHost:
                 ItemData = {
                     "jsonrpc": "2.0",
@@ -157,18 +156,15 @@ class Zabbix(object):
                 }
                 # 向每一台主机发起请求，获取监控项
                 Ret = requests.post(url=self.ApiUrl, data=json.dumps(ItemData), headers=self.__Headers, verify=False).json()
-                #{'jsonrpc': '2.0', 'result': [{'itemid': '210456', 'name': 'CPU $2 time ($3)', 'key_': 'system.cpu.util[,iowait,avg1]'}, {'itemid': '210458', 'name': 'CPU $2 time ($3)', 'key_': 'system.cpu.util[,system,avg1]'}, {'itemid': '210457', 'name': 'CPU $2 time ($3)', 'key_': 'system.cpu.util[,nice,avg1]'}, {'itemid': '210455', 'name': 'CPU $2 time ($3)', 'key_': 'system.cpu.util[,idle,avg1]'}, {'itemid': '210459', 'name': 'CPU user time (avg1)', 'key_': 'system.cpu.util[,user,avg1]'}, {'itemid': '210460', 'name': 'Host name', 'key_': 'system.hostname'}, {'itemid': '210467', 'name': 'Host uptime (in sec)', 'key_': 'system.uptime'}, {'itemid': '210453', 'name': 'Processor load', 'key_': 'system.cpu.load[,avg1]'}, {'itemid': '210452', 'name': 'Processor load15', 'key_': 'system.cpu.load[,avg15]'}, {'itemid': '210454', 'name': 'Processor load5', 'key_': 'system.cpu.load[,avg5]'}, {'itemid': '210471', 'name': 'Total memory', 'key_': 'vm.memory.size[total]'}], 'id': 1}
                 #print(Ret)
                 if 'result' in Ret:
                     # 判断每台主机是否有获取到监控项，如果不等于0表示获取到有监控项
                     if len(Ret['result']) != 0:
                         # 从所有主机信息中取出目前获取信息的这台主机信息存在host_info中
                         HostInfo = AllHost[k]
-                        #{'host': 'Zabbix server', 'hostid': '10084', 'ip': '127.0.0.1', 'name': 'Zabbix server'}
                         # 循环处理每一台主机的所有监控项
                         #print(HostInfo)
                         for historyid in Ret['result']:
-                            #{'itemid': '210456', 'name': 'CPU $2 time ($3)', 'key_': 'system.cpu.util[,iowait,avg1]'}
                             #print(str(historyid.values()))
                             #print(historyid)
                             starttime = "2022-09-19 12:00:00" 
@@ -192,7 +188,6 @@ class Zabbix(object):
                                 "id": 1
                             }
                             HistoryApiRet = requests.post(url=self.ApiUrl, data=json.dumps(HistoryApiData), headers=self.__Headers, verify=False).json()
-                            #{'jsonrpc': '2.0', 'result': [{'itemid': '210456', 'clock': '1663560000', 'num': '12', 'value_min': '0.004189', 'value_avg': '0.06002008333333331', 'value_max': '0.64908'}, 
                             if HistoryApiRet:
                                 avg_valuelist = []
                                 for i in HistoryApiRet['result']:
