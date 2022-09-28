@@ -12,7 +12,7 @@ def WriteExcel(FilaPath, ZabbixData):
     Sheet = WorkBook.active
     Sheet.title = '服务器资源使用情况'
     #  除去 :  '根目录总量/G','根目录使用量/G',
-    TableTitle = ['IP','主机名','运行时长/天','CPU/核','内存/GB','根目录使用率/%','CPU平均负载/1min','CPU平均负载/5min','CPU平均负载/15min','CPU空闲时间','CPU使用率/%','内存使用率/%','可用内存/G','磁盘使用率/%','低负载（是/否）']
+    TableTitle = ['IP','主机名','运行时长/天','内存/GB','CPU平均负载/1min','CPU平均负载/5min','CPU平均负载/15min','CPU空闲率/%','可用内存/G','内存可用率/%','低负载（是/否）']
     TitleColumn = {} #存放每个title值所对应的列{'IP': 'A', '主机名': 'B', '运行时长': 'C', 'CPU/核': 'D', '内存/GB': 'E', '根目录总量': 'F',...}
     AllHostItemValues = [] #存放所有主机的监控项值 列表信息。
 
@@ -27,48 +27,17 @@ def WriteExcel(FilaPath, ZabbixData):
     # 整理Zabbix 监控数据逐行写入到表格中
     #print(ZabbixData)
     for host in ZabbixData.values():
-        # 1.首先要对分区目录使用率进行一个整合，将除/目录外的分区目录使用率整合为一个值
-        DiskItems = ''   #定义一个空值，用于存放除根目录空间使用率外所有的分区目录使用率
-        DelItems = []    #定义一个空列表，用于存放除根目录空间使用率外所有的分区目录使用率的键值
-        for item in host:
-            DiskItem = re.findall(r'^/[a-z0-9]{1,50}: Space utilization', item)
-            if len(DiskItem) == 1:
-                DiskItem = DiskItem[0]  #获取监控项的名字 /boot: Space utilization
-                NewDiskItem = DiskItem.strip('Space utilization')  # 将名字格式化，/boot: Space utilization 格式化为：/boot:
-                DiskItemValue = str(round(float(host[item]), 2)) + '%'  # 取出对应监控项的值，并格式化保留两位小数
-                # 将所有分区目录使用率组合为一个整的磁盘使用率
-                if DiskItems == '':
-                    DiskItemData = str(NewDiskItem) + ' ' + str(DiskItemValue)
-                else:
-                    DiskItemData = '\n' + str(NewDiskItem) + ' ' + str(DiskItemValue)
-                DiskItems += DiskItemData
-                # 将处理完的磁盘使用率加入到DelItems列表中，供后续删除使用
-                DelItems.append(DiskItem)
-        #print(host)
-        # 2.将已经整合过的分区目录使用率监控项在原来的主机监控项中删除
-        for delitem in DelItems:
-            host.pop(delitem)
-
-        # 3.将整合好的分区目录使用率，重新加入到主机监控项的字典中
-        host['Disk utilization'] = DiskItems
-        #print(host)
-        # 4.将每台主机监控项的值取出来组成一个列表
-        # 最终得到一条一条这样的数据：
-        #'IP','主机名','运行时长/天','CPU/核','内存/GB','根目录使用率/%','CPU平均负载/1min','CPU平均负载/5min','CPU平均负载/15min','CPU空闲时间','CPU使用率/%','内存使用率/%','可用内存/G','磁盘使用率/%'
-        # ['172.24.125.12', 'tbds-172-24-125-12', '245.87d', '16', 64, '50G', 7.43, '14.87%', '0.1', '0.18', '0.32', 97.79, '2.21%', '35.52%', 40.45, '/boot: 14.23%\n/data: 6.24%\n/home: 0.03%']
-        #print(host['System uptime'])
-        if 'System uptime' in host:
+        #print (ZabbixData.values())
+        if 'Host uptime (in sec)' in host:
             HostItemValues = [] #定义一个空列表，用于存放主机的监控项的值
             HostItemValues.append(host['ip'])
             HostItemValues.append(host['name'])
             try:
-                HostItemValues.append(str(round(int(host['System uptime']) / 24 / 60 / 60, 2)) + 'd')
+                HostItemValues.append(str(round(int(host['Host uptime (in sec)']) / 24 / 60 / 60, 2)) + 'd')
                 # 首先将运行时长换算为天数，然后再加入到列表中
             except  IndexError as e:
                 print("IndexError Details : " + str(e))
                 pass
-
-            HostItemValues.append(host['Number of CPUs'])
             TotalMemory = int(int(host['Total memory']) / 1024 / 1024 / 1024)
             if TotalMemory == 7:
                 TotalMemory = 8
@@ -83,21 +52,15 @@ def WriteExcel(FilaPath, ZabbixData):
             elif TotalMemory == 503:
                 TotalMemory = 512
             HostItemValues.append(TotalMemory)  # 内存总大小
-            #HostItemValues.append(str(round(int(host['/: Total space']) / 1024 / 1024 / 1024)) + 'G')  # 根目录总共大小
-            #HostItemValues.append(str(round(int(host['/: Used space']) / 1024 / 1024 / 1024, 2)) + 'G')  # 根目录使用量
-            HostItemValues.append(str(round(float(host['根目录使用率监控']), 2)) + '%')  # 根目录使用率
-            HostItemValues.append(host['Load average (1m avg)'])
-            HostItemValues.append(host['Load average (5m avg)'])
-            HostItemValues.append(host['Load average (15m avg)'])
-            HostItemValues.append(round(float(host['idle time']), 2))  # CPU空闲时间
-            HostItemValues.append(str(round(float(host['CPU utilization']), 2)) + '%')  # CPU使用率
-            HostItemValues.append(str(round(float(host['Memory utilization']), 2)) + '%')  # 内存使用率
-            HostItemValues.append(str(round(int(host['Available memory']) / 1024 / 1024 / 1024, 2)) + 'G')  # 可用内存
-            HostItemValues.append(host['服务器硬盘总使用率'])  # 磁盘使用率
-            if host['Number of CPUs'] == "0":
-                HostItemValues.append("已停用")
-            #print(type(float(host['Load average (15m avg)'])),type(float(round(float(host['CPU utilization']), 2))))
-            if  float(host['Load average (15m avg)']) >= 10 or  float(round(float(host['CPU utilization']), 2)) >= 20 :
+            HostItemValues.append(str(round(host['Processor load'], 2)))
+            HostItemValues.append(str(round(host['Processor load5'], 2)))
+            HostItemValues.append(str(round(host['Processor load15'], 2)))
+            HostItemValues.append(str(round(float(host[r'CPU $2 time ($3)']), 2)) + '%')  # CPU空闲率
+            Memoryavailable = int(host['Buffers memory']) + int(host['Cached memory']) + int(host['Free memory'])
+            HostItemValues.append(str(round(Memoryavailable / 1024 / 1024 / 1024, 2)) + 'G')  # 可用内存
+            HostItemValues.append(str(round(Memoryavailable / 1024 / 1024 / 1024 / TotalMemory, 2)) + '%')  # 内存可用率
+
+            if  float(host['Processor load15']) >= 15 or  float(round(float(host[r'CPU $2 time ($3)']), 2)) <= 20 :
                 #print("负载: 是" + host['Load average (15m avg)'])
                 #print("cpu: 是" + str(round(float(host['CPU utilization']), 2)))
                 HostItemValues.append("否")

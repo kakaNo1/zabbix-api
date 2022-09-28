@@ -1,7 +1,6 @@
+
 #! /usr/bin/env python
 # _*_ coding: utf-8 _*_
-
-
 import configparser
 import os,sys
 import time
@@ -17,7 +16,10 @@ if __name__ == "__main__":
     print("start".center(60,"*"))
     print("zabbix统计机器资源使用情况".center(60))
     config = configparser.ConfigParser()
-    config.read(os.path.join(os.getcwd(), 'config.ini'), encoding='utf-8')
+    config.read(os.path.join(os.getcwd(), 'config.ini'), encoding='utf-8-sig')
+    zabbix_api = config.get("zabbix","api_url")
+    zabbix_user = config.get("zabbix","user")
+    zabbix_passwd = config.get("zabbix","password")
     # 实例化一个zabbix对象
     zabbix =  Zabbix(
         zabbix_api,
@@ -38,4 +40,5 @@ if __name__ == "__main__":
         endtime = datetime.datetime.now()
         run_time=endtime - starttime
         print(f"程序运行：{run_time.seconds} s  生成文件：{file_name}")
-        print("end".center(60, "*"))
+        print("end".center(60, "*"))    
+
